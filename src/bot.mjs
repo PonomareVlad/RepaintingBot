@@ -44,7 +44,7 @@ export class RepaintingBot extends TeleBot {
             message_id: messageId, chat: {id: chatId} = {}, reply_to_message: {text: title, from: {id: user_id} = {}},
         } = message;
         const options = {title, user_id, needs_repainting: true};
-        const buffer = readFileSync(new URL("../public/sticker.tgs", import.meta.url));
+        const buffer = readFileSync(new URL("../public/sticker.tgs", import.meta.url), {encoding: "binary"});
         const {file_id} = await this.uploadStickerFile({...options, buffer});
         const sticker = {sticker: file_id, emoji_list: [DEFAULT_STICKER_EMOJI]};
         const result = await this.createNewStickerSet({...options, stickers: [sticker]}).catch(e => e);
@@ -65,6 +65,29 @@ export class RepaintingBot extends TeleBot {
     async init() {
         const {username} = await this.getMe();
         this.username = username;
+    }
+
+    async uploadStickerFile(data = {user_id: 0}) {
+        const {
+            file,
+            buffer,
+            user_id,
+            filename = "sticker.tgs",
+            sticker_format = "animated",
+        } = data || {};
+        const value = buffer || file;
+        const form = {
+            user_id,
+            sticker_format,
+            sticker: {
+                value,
+                options: {
+                    filename
+                }
+            },
+        };
+        const {result} = await this.request("/uploadStickerFile", null, form);
+        return result;
     }
 
     async createNewStickerSet(data = {user_id: 0, title: "", stickers: []}) {
