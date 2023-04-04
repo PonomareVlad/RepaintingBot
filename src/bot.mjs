@@ -44,7 +44,7 @@ export class RepaintingBot extends TeleBot {
             message_id: messageId, chat: {id: chatId} = {}, reply_to_message: {text: title, from: {id: user_id} = {}},
         } = message;
         const options = {title, user_id, needs_repainting: true};
-        const buffer = readFileSync(new URL("../public/sticker.tgs", import.meta.url), {encoding: "binary"});
+        const buffer = readFileSync(new URL("../public/sticker.tgs", import.meta.url));
         const {file_id} = await this.uploadStickerFile({...options, buffer});
         const sticker = {sticker: file_id, emoji_list: [DEFAULT_STICKER_EMOJI]};
         const result = await this.createNewStickerSet({...options, stickers: [sticker]}).catch(e => e);
