@@ -1,4 +1,5 @@
 import TeleBot from "telebot";
+import {readFileSync} from "fs";
 
 const {
     DEFAULT_STICKER_ID, TELEGRAM_BOT_TOKEN, DEFAULT_STICKER_EMOJI,
@@ -40,12 +41,11 @@ export class RepaintingBot extends TeleBot {
         const {
             message_id: messageId, chat: {id: chatId} = {}, reply_to_message: {text: title, from: {id: user_id} = {}},
         } = message;
-        const options = {
-            title, user_id, needs_repainting: true, stickers: [{
-                sticker: DEFAULT_STICKER_ID, emoji_list: [DEFAULT_STICKER_EMOJI]
-            }]
-        };
-        const result = await this.createNewStickerSet(options).catch(e => e);
+        const options = {title, user_id, needs_repainting: true};
+        const buffer = readFileSync("../public/sticker.tgs");
+        const {file_id} = await this.uploadStickerFile({...options, buffer});
+        const sticker = {sticker: file_id, emoji_list: [DEFAULT_STICKER_EMOJI]};
+        const result = await this.createNewStickerSet({...options, stickers: [sticker]}).catch(e => e);
         if (result === true) {
             const {stickers = []} = await this.getStickerSet(options).catch(e => e);
             const setStickers = stickers.map(({file_id} = {}) => file_id);
