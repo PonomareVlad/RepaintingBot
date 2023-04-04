@@ -1,5 +1,7 @@
 import TeleBot from "telebot";
 import {readFileSync} from "fs";
+import "telebot/plugins/shortReply.js";
+import "telebot/plugins/regExpMessage.js";
 
 const {
     DEFAULT_STICKER_ID, TELEGRAM_BOT_TOKEN, DEFAULT_STICKER_EMOJI,
