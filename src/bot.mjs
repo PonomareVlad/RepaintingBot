@@ -2,35 +2,27 @@ import TeleBot from "telebot";
 import {readFileSync} from "fs";
 import "telebot/plugins/shortReply.js";
 import "telebot/plugins/regExpMessage.js";
+import {parseCommands, NewMethodsMixin, getSetName} from "telebot-utils";
 
 const {
-    DEFAULT_STICKER_ID, TELEGRAM_BOT_TOKEN, DEFAULT_STICKER_EMOJI,
+    LOG_CHAT_ID,
+    TELEGRAM_BOT_TOKEN,
+    DEFAULT_STICKER_EMOJI,
 } = process.env;
 
-export class RepaintingBot extends TeleBot {
+export class RepaintingBot extends NewMethodsMixin(TeleBot) {
 
     constructor(...args) {
         super(...args);
+        this.mod("message", parseCommands);
         this.on("text", this.text.bind(this));
         this.on("callbackQuery", this.callback.bind(this));
-        this.mod("message", this.message.bind(this));
     }
 
-    static getSetName = (name = "", username = "") => `${name.replaceAll(" ", "_")}_by_${username}`;
-
-    message(data) {
-        if (data?.message?.text?.startsWith("/")) {
-            const [name, ...words] = data.message.text.split(" ");
-            Object.assign(data.message, {
-                command: name.replace("/", ""), text: words.join(" "), isCommand: true
-            });
-        }
-        return data;
-    }
-
-    async text({command, text: title = "Untitled", from: {id: user_id} = {}, reply = {}} = {}) {
+    async text({command, message_id, text: title = "Untitled", chat: {id}, from: {id: user_id} = {}, reply = {}} = {}) {
         if (command) return reply.text("Please send name for new set", {asReply: true});
-        const setName = this.constructor.getSetName(title, this.username);
+        if (LOG_CHAT_ID) await this.forwardMessage(parseInt(LOG_CHAT_ID), id, message_id);
+        const setName = getSetName(title, this.username);
         const {name} = await this.getStickerSet({title}).catch(e => e);
         if (name) return await reply.text(`Set already exist: t.me/addemoji/${setName}`, {asReply: true});
         const message = `Create t.me/addemoji/${setName} ?`;
@@ -52,9 +44,10 @@ export class RepaintingBot extends TeleBot {
             const {stickers = []} = await this.getStickerSet(options).catch(e => e);
             const setStickers = stickers.map(({file_id} = {}) => file_id);
             if (setStickers.length === 1) await this.deleteStickerFromSet({sticker: setStickers.at(0)}).catch(e => e);
-            const setName = this.constructor.getSetName(title, this.username);
+            const setName = getSetName(title, this.username);
             const text = `Created set: t.me/addemoji/${setName}`;
             await this.editMessageText({chatId, messageId}, text);
+            if (LOG_CHAT_ID) await this.sendMessage(parseInt(LOG_CHAT_ID), text);
             const tip = `Now you can add emoji to this set via @stickers bot`;
             return this.sendMessage(chatId, tip);
         } else {
@@ -62,77 +55,6 @@ export class RepaintingBot extends TeleBot {
         }
     }
 
-    async init() {
-        const {username} = await this.getMe();
-        this.username = username;
-    }
-
-    async uploadStickerFile(data = {user_id: 0}) {
-        const {
-            file,
-            buffer,
-            user_id,
-            filename = "sticker.tgs",
-            sticker_format = "animated",
-        } = data || {};
-        const value = buffer || file;
-        const form = {
-            user_id,
-            sticker_format,
-            sticker: {
-                value,
-                options: {
-                    filename
-                }
-            },
-        };
-        const {result} = await this.request("/uploadStickerFile", null, form);
-        return result;
-    }
-
-    async createNewStickerSet(data = {user_id: 0, title: "", stickers: []}) {
-        const {
-            name,
-            title,
-            user_id,
-            stickers = [],
-            username = this.username,
-            needs_repainting = false,
-            sticker_format = "animated",
-            sticker_type = "custom_emoji",
-        } = data || {};
-        const form = {
-            title,
-            user_id,
-            sticker_type,
-            sticker_format,
-            needs_repainting,
-            stickers: JSON.stringify(stickers),
-            name: this.constructor.getSetName(name || title, username),
-        };
-        const {result} = await this.request("/createNewStickerSet", form);
-        return result;
-    }
-
-    async deleteStickerFromSet(data = {}) {
-        const {sticker} = data || {};
-        const form = {sticker};
-        const {result} = await this.request("/deleteStickerFromSet", form);
-        return result;
-    }
-
-    async getStickerSet(data = {}) {
-        const {
-            name,
-            title,
-            username = this.username,
-        } = data || {};
-        const form = {
-            name: this.constructor.getSetName(name || title, username),
-        };
-        const {result} = await this.request("/getStickerSet", form);
-        return result;
-    }
 }
 
 export default new RepaintingBot(TELEGRAM_BOT_TOKEN);
