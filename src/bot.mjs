@@ -22,7 +22,7 @@ export class RepaintingBot extends NewMethodsMixin(TeleBot) {
     async text({command, message_id, text: title = "Untitled", chat: {id}, from: {id: user_id} = {}, reply = {}} = {}) {
         if (command) return reply.text("Please send name for new set", {asReply: true});
         if (LOG_CHAT_ID) await this.forwardMessage(parseInt(LOG_CHAT_ID), id, message_id);
-        const setName = getSetName(title, this.username);
+        const setName = getSetName(title, this.username ??= await this.get("username"));
         const {name} = await this.getStickerSet({title}).catch(e => e);
         if (name) return await reply.text(`Set already exist: t.me/addemoji/${setName}`, {asReply: true});
         const message = `Create t.me/addemoji/${setName} ?`;
@@ -44,7 +44,7 @@ export class RepaintingBot extends NewMethodsMixin(TeleBot) {
             const {stickers = []} = await this.getStickerSet(options).catch(e => e);
             const setStickers = stickers.map(({file_id} = {}) => file_id);
             if (setStickers.length === 1) await this.deleteStickerFromSet({sticker: setStickers.at(0)}).catch(e => e);
-            const setName = getSetName(title, this.username);
+            const setName = getSetName(title, this.username ??= await this.get("username"));
             const text = `Created set: t.me/addemoji/${setName}`;
             await this.editMessageText({chatId, messageId}, text);
             if (LOG_CHAT_ID) await this.sendMessage(parseInt(LOG_CHAT_ID), text);
